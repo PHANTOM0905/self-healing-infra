@@ -1,0 +1,60 @@
+# Save as: ~/self-healing-infra/prometheus/alert_rules.yml
+
+groups:
+- name: service_alerts
+  rules:
+  
+  # Alert when NGINX Exporter is unreachable
+  - alert: NginxExporterDown
+    expr: up{job="nginx"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      service: nginx-exporter
+    annotations:
+      summary: "NGINX Exporter is down"
+      description: "The NGINX exporter is not responding for more than 1 minute."
+
+  # Alert when NGINX metrics are missing (meaning NGINX itself is likely down)
+  - alert: NginxMetricsMissing
+    expr: absent(nginx_connections_active)
+    for: 30s
+    labels:
+      severity: critical
+      service: nginx
+    annotations:
+      summary: "NGINX metrics missing"
+      description: "Prometheus cannot find nginx_connections_active. NGINX may be down or unreachable."
+
+  # Alert when system load is high
+  - alert: HighSystemLoad
+    expr: node_load1 / count(count(node_cpu_seconds_total) by (cpu)) > 0.8
+    for: 1m
+    labels:
+      severity: warning
+      service: system
+    annotations:
+      summary: "High system load detected"
+      description: "System load is {{ $value }} for more than 1 minute"
+
+  # Alert when memory usage is high
+  - alert: HighMemoryUsage
+    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+    for: 2m
+    labels:
+      severity: warning
+      service: system
+    annotations:
+      summary: "High memory usage detected"
+      description: "Memory usage is above 85% for more than 2 minutes"
+
+  # Alert when disk space is low
+  - alert: LowDiskSpace
+    expr: (node_filesystem_size_bytes{mountpoint="/"} - node_filesystem_free_bytes{mountpoint="/"}) / node_filesystem_size_bytes{mountpoint="/"} > 0.9
+    for: 1m
+    labels:
+      severity: critical
+      service: system
+    annotations:
+      summary: "Low disk space"
+      description: "Disk usage is above 90%"

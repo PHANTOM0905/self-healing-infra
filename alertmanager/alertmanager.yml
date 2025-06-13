@@ -1,0 +1,36 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@yourdomain.com'
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'critical-webhook'  # Default receiver
+
+  # Sub-route for non-critical alerts (optional)
+  routes:
+    - match:
+        severity: warning
+      receiver: 'webhook-receiver'
+
+# Receivers
+receivers:
+  - name: 'critical-webhook'
+    webhook_configs:
+      - url: 'http://webhook-handler:5000/critical-alert'
+        send_resolved: true
+
+  - name: 'webhook-receiver'
+    webhook_configs:
+      - url: 'http://webhook-handler:5000/alert'
+        send_resolved: true
+
+# Prevent warning alerts when critical exists
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']

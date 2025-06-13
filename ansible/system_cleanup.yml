@@ -1,0 +1,54 @@
+# Save as: ~/self-healing-infra/ansible/system_cleanup.yml
+---
+- name: System Cleanup and Optimization
+  hosts: localhost
+  gather_facts: true
+  tasks:
+    - name: Clean package cache
+      apt:
+        autoclean: yes
+        autoremove: yes
+      ignore_errors: true
+
+    - name: Clean temporary files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/*
+        - /var/tmp/*
+      ignore_errors: true
+
+    - name: Clean Docker unused resources
+      docker_prune:
+        containers: true
+        images: true
+        images_filters:
+          dangling: false
+        networks: true
+        volumes: true
+        builder_cache: true
+      ignore_errors: true
+
+    - name: Get current system load
+      shell: uptime | awk '{print $(NF-2)}' | sed 's/,//'
+      register: current_load
+      changed_when: false
+
+    - name: Get memory usage
+      shell: free | grep Mem | awk '{printf "%.2f", $3/$2 * 100.0}'
+      register: memory_usage
+      changed_when: false
+
+    - name: Log cleanup action
+      lineinfile:
+        path: /app/logs/actions.log
+        line: "{{ ansible_date_time.iso8601 }} - System cleanup completed. Load: {{ current_load.stdout }}, Memory: {{ memory_usage.stdout }}%"
+        create: true
+
+    - name: Display system status
+      debug:
+        msg: 
+          - "System cleanup completed"
+          - "Current load: {{ current_load.stdout }}"
+          - "Memory usage: {{ memory_usage.stdout }}%"

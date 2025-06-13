@@ -1,0 +1,94 @@
+# Save as: ~/self-healing-infra/ansible/emergency_response.yml
+---
+- name: Emergency Response Procedures
+  hosts: localhost
+  gather_facts: true
+  tasks:
+    - name: Create emergency log entry
+      lineinfile:
+        path: /app/logs/emergency.log
+        line: "{{ ansible_date_time.iso8601 }} - EMERGENCY RESPONSE TRIGGERED"
+        create: true
+
+    - name: Stop non-essential services
+      docker_container:
+        name: "{{ item }}"
+        state: stopped
+      loop:
+        - cadvisor
+      ignore_errors: true
+
+    - name: Restart critical services
+      docker_container:
+        name: "{{ item }}"
+        state: started
+        restart: true
+      loop:
+        - nginx
+        - prometheus
+        - alertmanager
+      ignore_errors: true
+
+    - name: Clear system caches
+      shell: "{{ item }}"
+      loop:
+        - echo 3 > /proc/sys/vm/drop_caches
+        - sync
+      ignore_errors: true
+      become: true
+
+    - name: Kill high CPU processes (if any)
+      shell: |
+        ps aux --sort=-%cpu | head -10 | tail -n +2 | while read line; do
+          cpu=$(echo $line | awk '{print $3}' | cut -d. -f1)
+          pid=$(echo $line | awk '{print $2}')
+          cmd=$(echo $line | awk '{for(i=11;i<=NF;i++) printf "%s ", $i; print ""}')
+          if [ "$cpu" -gt 80 ] && [[ ! "$cmd" =~ (prometheus|alertmanager|nginx) ]]; then
+            echo "Killing high CPU process: $pid ($cpu% CPU) - $cmd"
+            kill -TERM $pid 2>/dev/null || true
+          fi
+        done
+      ignore_errors: true
+
+    - name: Check disk space and clean if needed
+      shell: |
+        usage=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
+        if [ "$usage" -gt 85 ]; then
+          echo "Disk usage is ${usage}% - cleaning up"
+          find /var/log -name "*.log" -mtime +7 -delete 2>/dev/null || true
+          find /tmp -type f -mtime +1 -delete 2>/dev/null || true
+          docker system prune -f
+        fi
+      register: disk_cleanup
+      ignore_errors: true
+
+    - name: Wait for services to stabilize
+      wait_for:
+        timeout: 30
+
+    - name: Verify critical services are running
+      uri:
+        url: "{{ item }}"
+        method: GET
+        status_code: 200
+      loop:
+        - http://localhost:8080/health
+        - http://localhost:9090/-/healthy
+        - http://localhost:9093/-/healthy
+      retries: 3
+      delay: 5
+      register: service_health
+      ignore_errors: true
+
+    - name: Log emergency response completion
+      lineinfile:
+        path: /app/logs/emergency.log
+        line: "{{ ansible_date_time.iso8601 }} - Emergency response completed. Services status: {{ 'OK' if service_health is succeeded else 'PARTIAL' }}"
+        create: true
+
+    - name: Send emergency completion notification
+      debug:
+        msg: 
+          - "Emergency response procedures completed"
+          - "Timestamp: {{ ansible_date_time.iso8601 }}"
+          - "Status: {{ 'Services restored' if service_health is succeeded else 'Partial recovery - manual intervention may be required' }}"

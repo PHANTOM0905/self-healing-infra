@@ -1,0 +1,14 @@
+# Save as: ~/self-healing-infra/ansible/inventory
+[local]
+localhost ansible_connection=local ansible_python_interpreter=/usr/bin/python3
+
+[webservers]
+nginx_container ansible_connection=docker
+
+[monitoring]
+prometheus_container ansible_connection=docker
+alertmanager_container ansible_connection=docker
+
+[all:vars]
+ansible_user=root
+ansible_become=yes

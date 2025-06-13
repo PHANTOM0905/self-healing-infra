@@ -1,0 +1,61 @@
+---
+- name: Restart NGINX Service
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: /usr/local/bin/python3
+
+  tasks:
+    - name: Get current timestamp
+      command: date -Iseconds
+      register: current_time
+
+    - name: Check if nginx container exists
+      community.docker.docker_container_info:
+        name: nginx
+      register: nginx_info
+      failed_when: false
+      changed_when: false
+
+    - name: Restart nginx container if it exists
+      community.docker.docker_container:
+        name: nginx
+        state: started
+        restart: true
+      when: nginx_info.container is defined
+      register: restart_result
+
+    - name: Wait a few seconds for NGINX container to initialize
+      pause:
+        seconds: 5
+      when: restart_result is succeeded
+
+    - name: Confirm nginx is healthy via HTTP
+      uri:
+        url: "http://nginx:80/"
+        method: GET
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 10
+      delay: 5
+      when: restart_result is succeeded
+
+    - name: Log restart success
+      lineinfile:
+        path: /app/logs/actions.log
+        line: "{{ current_time.stdout }} - NGINX restarted successfully"
+        create: true
+      when: restart_result is succeeded and health_check.status == 200
+
+    - name: Log restart failure
+      lineinfile:
+        path: /app/logs/actions.log
+        line: "{{ current_time.stdout }} - NGINX restart FAILED"
+        create: true
+      when: restart_result is failed or health_check.status != 200
+
+    - name: Send notification
+      debug:
+        msg: "NGINX restart completed at {{ current_time.stdout }}"

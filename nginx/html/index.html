@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Healing Infrastructure Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .status {
+            background: #27ae60;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .info {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        a {
+            color: #2980b9;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Self-Healing Infrastructure</h1>
+        
+        <div class="status">
+            ✅ NGINX Service is Running
+        </div>
+        
+        <div class="info">
+            <h3>🧩 Project Components:</h3>
+            <ul>
+                <li><strong>Prometheus:</strong> Metrics collection and alerting</li>
+                <li><strong>Alertmanager:</strong> Alert routing and management</li>
+                <li><strong>Grafana:</strong> Metrics visualization and dashboards</li>
+                <li><strong>Node Exporter:</strong> Host system metrics exporter</li>
+                <li><strong>NGINX:</strong> Web service being monitored</li>
+                <li><strong>NGINX Exporter:</strong> Exports NGINX metrics to Prometheus</li>
+                <li><strong>cAdvisor:</strong> Container resource usage exporter</li>
+                <li><strong>Ansible:</strong> Used for automated healing via playbooks</li>
+                <li><strong>Webhook Handler:</strong> Python service that receives alerts and triggers Ansible</li>
+            </ul>
+        </div>
+        
+        <div class="info">
+            <h3>🔍 Monitoring Endpoints:</h3>
+            <ul>
+                <li>📊 <a href="http://localhost:9090" target="_blank">Prometheus Dashboard</a></li>
+                <li>📨 <a href="http://localhost:9093" target="_blank">Alertmanager Dashboard</a></li>
+                <li>📈 <a href="http://localhost:3000" target="_blank">Grafana Dashboard</a></li>
+                <li>💻 <a href="http://localhost:9100/" target="_blank">Node Exporter</a></li>
+                <li>📦 <a href="http://localhost:8081/" target="_blank">cAdvisor Dashboard</a></li>
+                <li>🌐 <a href="http://localhost:9113/" target="_blank">NGINX Exporter</a></li>
+                <li>🧪 <a href="http://localhost:5000/health" target="_blank">Webhook Handler Health</a></li>
+                <li>🕸️ <a href="http://localhost:8181" target="_blank">NGINX Web Interface</a></li>
+            </ul>
+        </div>
+        
+        <div class="timestamp">
+            Last updated: <span id="timestamp"></span>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        setTimeout(() => location.reload(), 30000); // Refresh every 30 seconds
+    </script>
+</body>
+</html>
